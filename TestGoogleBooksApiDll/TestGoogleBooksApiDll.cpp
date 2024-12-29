@@ -11,6 +11,7 @@ using namespace NSIniParser;
 
 void printBookDetails(const Json::Value& book)
 {
+    cout << "----------------------------------------" << endl;
     cout << "Title: " << book["volumeInfo"]["title"].asString() << endl;
 
     cout << "Authors: ";
@@ -34,7 +35,6 @@ void printBookDetails(const Json::Value& book)
     cout << "Preview Link: " << book["volumeInfo"]["previewLink"].asString() << endl;
     cout << "Info Link: " << book["volumeInfo"]["infoLink"].asString() << endl;
     cout << "Canonical Volume Link: " << book["volumeInfo"]["canonicalVolumeLink"].asString() << endl;
-    cout << "----------------------------------------" << endl;
 }
 
 int main()
@@ -48,12 +48,23 @@ int main()
 
     try
     {
-        auto books = apiGoogleBooks.getAllBooksBySubject("terror");
+        auto books = // apiGoogleBooks.getAllBooksBySubject("terror");
+            apiGoogleBooks.getAllBooksByAuthor("Follet");
+            // apiGoogleBooks.getAllBooksByTitle("Os Pilares da Terra");
+            // apiGoogleBooks.getAllBooksByIsbn("9780679720218");
 
-        for (const auto& book : books["items"])
-            printBookDetails(book);
+        auto totalItems = books["totalItems"].asInt();
+        if (totalItems > 0)
+        {
+            cout << totalItems << " book(s) found." << endl;
+
+            for (const auto& book : books["items"])
+                printBookDetails(book);
+        }
+        else
+            cout << "No items found using for the term used." << endl;
     }
-    catch (const runtime_error& ex)
+    catch (const GoogleBooksInterfaceException& ex)
     {
         cerr << ex.what() << endl;
     }

@@ -6,6 +6,7 @@
 
 #include <string>
 #include <sstream>
+#include <algorithm>
 
 #include "GoogleBooksInterface.h"
 
@@ -46,7 +47,7 @@ void GoogleBooksInterface::setApiKey(const std::string& apiKey)
 
 Json::Value GoogleBooksInterface::getAllBooksBySubject(const string& subject, int startIndex, int maxResults)
 {
-    const string url = "https://www.googleapis.com/books/v1/volumes?q=subject:" + subject
+    const string url = "https://www.googleapis.com/books/v1/volumes?q=subject:" + replaceSpaces(subject)
         + "&startIndex=" + to_string(startIndex)
         + "&maxResults=" + to_string(maxResults)
         + "&key=" + m_apiKey;
@@ -61,7 +62,7 @@ Json::Value GoogleBooksInterface::getAllBooksBySubject(const string& subject, in
 
 Json::Value GoogleBooksInterface::getAllBooksByTitle(const std::string& bookTitle, int startIndex, int maxResults)
 {
-    const string url = "https://www.googleapis.com/books/v1/volumes?q=intitle:" + bookTitle + "&key=" + m_apiKey;
+    const string url = "https://www.googleapis.com/books/v1/volumes?q=intitle:" + replaceSpaces(bookTitle) + "&key=" + m_apiKey;
 
     auto response = httpGet(url);
 
@@ -73,7 +74,7 @@ Json::Value GoogleBooksInterface::getAllBooksByTitle(const std::string& bookTitl
 
 Json::Value GoogleBooksInterface::getAllBooksByAuthor(const std::string& author, int startIndex, int maxResults)
 {
-    const string url = "https://www.googleapis.com/books/v1/volumes?q=inauthor:" + author + "&key=" + m_apiKey;
+    const string url = "https://www.googleapis.com/books/v1/volumes?q=inauthor:" + replaceSpaces(author) + "&key=" + m_apiKey;
 
     auto response = httpGet(url);
 
@@ -100,7 +101,13 @@ void GoogleBooksInterface::initCurl()
     curl_global_init(CURL_GLOBAL_ALL);
     m_curl = curl_easy_init();
     if (!m_curl)
-        throw runtime_error("Failed to initialize CURL");
+        throw GoogleBooksInterfaceException{ "Failed to initialize CURL" };
+}
+
+std::string GoogleBooksInterface::replaceSpaces(string str, const char sign)
+{
+    replace(begin(str), end(str), ' ', sign);
+    return str;
 }
 
 std::string GoogleBooksInterface::httpGet(const std::string& url)
@@ -112,12 +119,12 @@ std::string GoogleBooksInterface::httpGet(const std::string& url)
         curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str());
         auto result = curl_easy_perform(m_curl);
         if (result != CURLE_OK)
-            throw runtime_error("Failed to get data from URL");
+            throw GoogleBooksInterfaceException{ "Failed to get data from URL" };
 
         return m_response;
     }
 
-    throw runtime_error("CURL not initialized");
+    throw GoogleBooksInterfaceException{ "CURL Interface not initialized" };
 
     return {};
 }
@@ -131,7 +138,7 @@ Json::Value GoogleBooksInterface::parseResponse(const std::string& response)
     istringstream iss(response);
 
     if (!Json::parseFromStream(builder, iss, &jsonData, &errors))
-        throw runtime_error("Failed to parse JSON response:\n" + m_response);
+        throw GoogleBooksInterfaceException{ "Failed to parse JSON response:\n" + m_response };
 
     return jsonData;
 }

@@ -32,7 +32,7 @@ namespace NSIniParser
         }
 
     public:
-        string getValue(const string& section, const string& key, const string& defaultValue = {}) const
+        string getValue(const string& section, const string& key) const
         {
             auto sectionIt = m_iniData.find(section);
             if (sectionIt == m_iniData.end())
@@ -40,12 +40,7 @@ namespace NSIniParser
 
             auto keyIt = sectionIt->second.find(key);
             if (keyIt == sectionIt->second.end())
-            {
-                if (defaultValue.empty())
-                    throw runtime_error("Key not found in section : " + key);
-                else
-                    return defaultValue;
-            }
+                throw runtime_error("Key not found in section : " + key);
 
             return keyIt->second;
         }
