@@ -40,7 +40,7 @@ void printBookDetails(const Json::Value& book)
 int main()
 {
     auto iniParser{ IniParser() };
-    iniParser.parseFromFile("TestGoogleBooksApiDll.cfg");
+    iniParser.parseFromFile("..\\..\\TestGoogleBooksApiDll.cfg");
 
     auto apiKey = iniParser.getValue("Api Key", "Key");
 
