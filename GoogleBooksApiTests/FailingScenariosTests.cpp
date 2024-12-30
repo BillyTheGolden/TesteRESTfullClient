@@ -24,24 +24,24 @@ namespace FailingScenarios
 			setApiKey(key);
 		}
 
-		Json::Value getAllBooksBySubject(const std::string& subject, int startIndex = 0, int maxResults = 40) override
+		Json::Value getAllBooksBySubject(const std::string& term, const std::string& subject, int startIndex = 0, int maxResults = 40) override
 		{
 			if (subject == "InvalidSubject")
 				return parseResponse(subject);
 
-			auto responseJson = GoogleBooksInterface::getAllBooksBySubject(subject);
+			auto responseJson = GoogleBooksInterface::getAllBooksBySubject(term, subject);
 
 			return responseJson;
 		}
 
-		Json::Value getAllBooksByTitle(const std::string& bookTitle, int startIndex = 0, int maxResults = 40) override
+		Json::Value getAllBooksByTitle(const std::string& term, const std::string& bookTitle, int startIndex = 0, int maxResults = 40) override
 		{
 			auto responseJson = httpGet(bookTitle);
 
 			return parseResponse(responseJson);
 		}
 
-		Json::Value getAllBooksByAuthor(const std::string& author, int startIndex = 0, int maxResults = 40) override
+		Json::Value getAllBooksByAuthor(const std::string& term, const std::string& author, int startIndex = 0, int maxResults = 40) override
 		{
 			auto responseJson = httpGet(author);
 			return parseResponse(responseJson);
@@ -60,7 +60,7 @@ namespace FailingScenarios
 			if (url == "UnknownAuthor"s)
 				return NoBooksFound;
 
-			return {};
+			return GoogleBooksInterface::httpGet(url);
 		}
 
 		Json::Value parseResponse(const std::string& response) override
@@ -72,7 +72,7 @@ namespace FailingScenarios
 	TEST(TestGoogleBooksApi, NoApiKeyRequest)
 	{
 		auto gbIf = MockGoogleBooksInterface{ "" };
-		auto books = gbIf.getAllBooksByTitle("Os Pilares da Terra");
+		auto books = gbIf.getAllBooksByTitle("Terra", "Os pilares da terra");
 
 		ASSERT_EQ(400, books["error"]["code"].asInt());
 	}
@@ -80,7 +80,7 @@ namespace FailingScenarios
 	TEST(TestGoogleBooksApi, NoBooksFound)
 	{
 		auto gbIf = MockGoogleBooksInterface{ "NoEmptyKey" };
-		auto books = gbIf.getAllBooksByAuthor("UnknownAuthor");
+		auto books = gbIf.getAllBooksByAuthor("general term", "UnknownAuthor");
 
 		ASSERT_EQ(0, books["totalItems"].asInt());
 	}
@@ -90,7 +90,7 @@ namespace FailingScenarios
 		try
 		{
 			auto gbIf = MockGoogleBooksInterface{ "NoEmptyKey" };
-			auto books = gbIf.getAllBooksByAuthor("UnknownAuthor");
+			auto books = gbIf.getAllBooksByAuthor("general term", "UnknownAuthor");
 		}
 		catch (const GoogleBooksInterfaceException& ex)
 		{
@@ -105,7 +105,7 @@ namespace FailingScenarios
 			auto gbIf = MockGoogleBooksInterface{ "NoEmptyKey" };
 			gbIf.initInterface();
 
-			auto books = gbIf.getAllBooksBySubject("terror");
+			auto books = gbIf.getAllBooksBySubject("general term", "terror");
 		}
 		catch (const GoogleBooksInterfaceException& ex)
 		{
@@ -120,7 +120,7 @@ namespace FailingScenarios
 			auto gbIf = MockGoogleBooksInterface{ "NoEmptyKey" };
 			gbIf.initInterface();
 
-			auto books = gbIf.getAllBooksBySubject("InvalidSubject");
+			auto books = gbIf.getAllBooksBySubject("general term", "InvalidSubject");
 		}
 		catch (const GoogleBooksInterfaceException& ex)
 		{
@@ -130,5 +130,15 @@ namespace FailingScenarios
 			auto pos = exMessage.find_first_of(subStr);
 			ASSERT_TRUE(pos == 0);
 		}
+	}
+
+	TEST(TestGoogleBooksApi, EscapeUrlCharacters)
+	{
+		auto gbIf = MockGoogleBooksInterface{ "AIzaSyBs5HC9JhqtuS99XHebTt7YEUzrMx2jGuI" };
+		gbIf.initInterface();
+
+		auto books = gbIf.getAllBooksBySubject("http://www.gooblebooks.com/v1/Fiction", "science");
+
+		ASSERT_FALSE(books["totalItems"].asInt() > 0);
 	}
 }

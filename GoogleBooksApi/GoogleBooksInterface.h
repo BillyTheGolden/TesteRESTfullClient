@@ -21,17 +21,25 @@ namespace Json
 
 /**
  * @class GoogleBooksInterfaceException
- * 
- * Custom exception class.
+ * @brief Custom exception class for GoogleBooksInterface.
  */
 class GoogleBooksInterfaceException : public std::exception
 {
 public:
-    GoogleBooksInterfaceException(const std::string& message) : m_what{message} {}
-    const char* what() const noexcept { return m_what.c_str(); }
+    /**
+     * @brief Constructs a GoogleBooksInterfaceException with the given message.
+     * @param message The exception message.
+     */
+    GoogleBooksInterfaceException(const std::string& message) : m_what{ message } {}
+
+    /**
+     * @brief Retrieves the exception message.
+     * @return The exception message.
+     */
+    const char* what() const noexcept override { return m_what.c_str(); }
 
 private:
-    std::string m_what;
+    std::string m_what; ///< The exception message.
 };
 
 /**
@@ -61,31 +69,43 @@ public:
     ~GoogleBooksInterface();
 
     /**
+     * @brief Retrieves all books by a search term.
+     * @param term The search term.
+     * @param startIndex The index of the first result to return.
+     * @param maxResults The maximum number of results to return.
+     * @return A JSON value containing the search results.
+     */
+    virtual Json::Value getAllBooksByTerm(const std::string& term, int startIndex = 0, int maxResults = 40);
+
+    /**
      * @brief Retrieves all books by subject.
+     * @param term The search term.
      * @param subject The subject to search for.
      * @param startIndex The index of the first result to return.
      * @param maxResults The maximum number of results to return.
      * @return A JSON value containing the search results.
      */
-    virtual Json::Value getAllBooksBySubject(const std::string& subject, int startIndex = 0, int maxResults = 40);
+    virtual Json::Value getAllBooksBySubject(const std::string& term, const std::string& subject, int startIndex = 0, int maxResults = 40);
 
     /**
      * @brief Retrieves all books by title.
+     * @param term The search term.
      * @param bookTitle The title of the book to search for.
      * @param startIndex The index of the first result to return.
      * @param maxResults The maximum number of results to return.
      * @return A JSON value containing the search results.
      */
-    virtual Json::Value getAllBooksByTitle(const std::string& bookTitle, int startIndex = 0, int maxResults = 40);
+    virtual Json::Value getAllBooksByTitle(const std::string& term, const std::string& bookTitle, int startIndex = 0, int maxResults = 40);
 
     /**
      * @brief Retrieves all books by author.
+     * @param term The search term.
      * @param author The author of the book to search for.
      * @param startIndex The index of the first result to return.
      * @param maxResults The maximum number of results to return.
      * @return A JSON value containing the search results.
      */
-    virtual Json::Value getAllBooksByAuthor(const std::string& author, int startIndex = 0, int maxResults = 40);
+    virtual Json::Value getAllBooksByAuthor(const std::string& term, const std::string& author, int startIndex = 0, int maxResults = 40);
 
     /**
      * @brief Retrieves all books by ISBN.
@@ -143,6 +163,13 @@ private:
      * @return The modified string.
      */
     std::string replaceSpaces(std::string str, const char sign = '+');
+
+    /**
+     * @brief Escapes special characters in a string for use in a URL.
+     * @param data The string to escape.
+     * @return The escaped string.
+     */
+    std::string escapeString(const std::string& data);
 };
 
 /**

@@ -7,6 +7,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <unordered_map>
 
 #include "GoogleBooksInterface.h"
 
@@ -40,31 +41,33 @@ GoogleBooksInterface::~GoogleBooksInterface()
         curl_easy_cleanup(m_curl);
 }
 
-void GoogleBooksInterface::setApiKey(const std::string& apiKey)
+void GoogleBooksInterface::setApiKey(const string& apiKey)
 {
     m_apiKey = apiKey;
 }
 
-Json::Value GoogleBooksInterface::getAllBooksBySubject(const string& subject, int startIndex, int maxResults)
+Json::Value GoogleBooksInterface::getAllBooksByTerm(const string& term, int startIndex, int maxResults)
 {
-    const string url = "https://www.googleapis.com/books/v1/volumes?q=subject:" + replaceSpaces(subject)
+    const string t = escapeString(term) +
+        +"&startIndex=" + to_string(startIndex)
+        + "&maxResults=" + to_string(maxResults);
+
+    auto response = httpGet(t);
+
+    if (!response.empty())
+        return parseResponse(response);
+
+    return {};
+}
+
+Json::Value GoogleBooksInterface::getAllBooksBySubject(const string& term, const string& subject, int startIndex, int maxResults)
+{
+    const string t = escapeString(term)
+        + "+subject:" + escapeString(subject) +
         + "&startIndex=" + to_string(startIndex)
-        + "&maxResults=" + to_string(maxResults)
-        + "&key=" + m_apiKey;
+        + "&maxResults=" + to_string(maxResults);
 
-    auto response = httpGet(url);
-
-    if (!response.empty())
-        return parseResponse(response);
-
-    return {};
-}
-
-Json::Value GoogleBooksInterface::getAllBooksByTitle(const std::string& bookTitle, int startIndex, int maxResults)
-{
-    const string url = "https://www.googleapis.com/books/v1/volumes?q=intitle:" + replaceSpaces(bookTitle) + "&key=" + m_apiKey;
-
-    auto response = httpGet(url);
+    auto response = httpGet(t);
 
     if (!response.empty())
         return parseResponse(response);
@@ -72,11 +75,29 @@ Json::Value GoogleBooksInterface::getAllBooksByTitle(const std::string& bookTitl
     return {};
 }
 
-Json::Value GoogleBooksInterface::getAllBooksByAuthor(const std::string& author, int startIndex, int maxResults)
+Json::Value GoogleBooksInterface::getAllBooksByTitle(const string& term, const string& bookTitle, int startIndex, int maxResults)
 {
-    const string url = "https://www.googleapis.com/books/v1/volumes?q=inauthor:" + replaceSpaces(author) + "&key=" + m_apiKey;
+    const string t = escapeString(term )
+        + "+intitle:" + escapeString(bookTitle)
+        + "&startIndex=" + to_string(startIndex)
+        + "&maxResults=" + to_string(maxResults);
 
-    auto response = httpGet(url);
+    auto response = httpGet(t);
+
+    if (!response.empty())
+        return parseResponse(response);
+
+    return {};
+}
+
+Json::Value GoogleBooksInterface::getAllBooksByAuthor(const string& term, const string& author, int startIndex, int maxResults)
+{
+    const string t = escapeString(term)
+        + "+inauthor:" + escapeString(author)
+        + "&startIndex=" + to_string(startIndex)
+        + "&maxResults=" + to_string(maxResults);
+
+    auto response = httpGet(t);
 
     if (!response.empty())
         return parseResponse(response);
@@ -84,11 +105,11 @@ Json::Value GoogleBooksInterface::getAllBooksByAuthor(const std::string& author,
     return {};
 }
 
-Json::Value GoogleBooksInterface::getAllBooksByIsbn(const std::string& ISBN, int startIndex, int maxResults)
+Json::Value GoogleBooksInterface::getAllBooksByIsbn(const string& ISBN, int startIndex, int maxResults)
 {
-    const string url = "https://www.googleapis.com/books/v1/volumes?q=isbn:" + ISBN + "&key=" + m_apiKey;
+    const string term = "isbn:" + escapeString(ISBN);
 
-    auto response = httpGet(url);
+    auto response = httpGet(term);
 
     if (!response.empty())
         return parseResponse(response);
@@ -104,19 +125,48 @@ void GoogleBooksInterface::initCurl()
         throw GoogleBooksInterfaceException{ "Failed to initialize CURL" };
 }
 
-std::string GoogleBooksInterface::replaceSpaces(string str, const char sign)
+string GoogleBooksInterface::replaceSpaces(string str, const char sign)
 {
     replace(begin(str), end(str), ' ', sign);
     return str;
+}
+
+string GoogleBooksInterface::escapeString(const string& data)
+{
+    string buffer;
+    buffer.reserve(data.size() * 2);
+
+    static const unordered_map<char, string> html_entities =
+    {
+        {'&', "&amp;"},
+        {'<', "&lt;"},
+        {'>', "&gt;"},
+        {'"', "&quot;"},
+        {'\'', "&#39;"},
+        {' ', "+"}
+    };
+
+    for_each(data.begin(), data.end(), [&](char c)
+        {
+            if (auto it = html_entities.find(c); it != html_entities.end())
+                buffer += it->second;
+            else
+                buffer += c;
+        });
+
+    return buffer;
 }
 
 std::string GoogleBooksInterface::httpGet(const std::string& url)
 {
     if (m_curl)
     {
+        auto urlPrefix{ "https://www.googleapis.com/books/v1/volumes?q="s };
+        auto urlAddress = urlPrefix + url + "&key=" + m_apiKey;
+
         curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, &m_response);
         curl_easy_setopt(m_curl, CURLOPT_WRITEFUNCTION, writeCallback);
-        curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(m_curl, CURLOPT_URL, urlAddress.c_str());
         auto result = curl_easy_perform(m_curl);
         if (result != CURLE_OK)
             throw GoogleBooksInterfaceException{ "Failed to get data from URL" };

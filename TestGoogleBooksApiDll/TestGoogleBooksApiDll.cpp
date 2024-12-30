@@ -46,28 +46,90 @@ int main()
 
     auto apiGoogleBooks = GoogleBooksInterfaceWithKeySingleton::getInstance(apiKey);
 
-    try
-    {
-        auto books = // apiGoogleBooks.getAllBooksBySubject("terror");
-            apiGoogleBooks.getAllBooksByAuthor("Follet");
-            // apiGoogleBooks.getAllBooksByTitle("Os Pilares da Terra");
-            // apiGoogleBooks.getAllBooksByIsbn("9780679720218");
+    int opt{ 0 };
 
-        auto totalItems = books["totalItems"].asInt();
-        if (totalItems > 0)
+    do
+    {
+        cout << "\nSearch books menu:\n1) general string\n2) by subject\n3) by author\n4) by title\n5) by isbn\n9) quit\nEnter you choice, please: ";
+
+        cin >> opt;
+
+        cin.ignore();
+
+        try
         {
-            cout << totalItems << " book(s) found." << endl;
+            Json::Value books;
 
-            for (const auto& book : books["items"])
-                printBookDetails(book);
+            string searchTerm;
+            if (opt != 0 && opt != 9)
+            {
+                cout << "Enter search term: ";
+                getline(cin, searchTerm);
+            }
+
+            switch (opt)
+            {
+            case 1:
+            {
+                books = apiGoogleBooks.getAllBooksByTerm(searchTerm);
+                break;
+            }
+            case 2:
+            {
+                string subject;
+                cout << "Enter subject: ";
+                getline(cin, subject);
+                books = apiGoogleBooks.getAllBooksBySubject(searchTerm, subject);
+                break;
+            }
+            case 3:
+            {
+                string author;
+                cout << "Enter author: ";
+                getline(cin, author);
+                books = apiGoogleBooks.getAllBooksByAuthor(searchTerm, author);
+                break;
+            }
+            case 4:
+            {
+                string title;
+                cout << "Enter title: ";
+                getline(cin, title);
+                books = apiGoogleBooks.getAllBooksByTitle(searchTerm,title);
+                break;
+            }
+            case 5:
+            {
+                books = apiGoogleBooks.getAllBooksByIsbn(searchTerm);
+                break;
+            }
+            case 0:
+                cout << "Exiting..." << endl;
+                break;
+            default:
+                cout << "Invalid option. Please try again." << endl;
+                continue;
+            }
+
+            if (opt != 0)
+            {
+                auto totalItems = books["totalItems"].asInt();
+                if (totalItems > 0)
+                {
+                    cout << totalItems << " book(s) found." << endl;
+
+                    for (const auto& book : books["items"])
+                        printBookDetails(book);
+                }
+                else
+                    cout << "No items found using the term provided." << endl;
+            }
         }
-        else
-            cout << "No items found using for the term used." << endl;
-    }
-    catch (const GoogleBooksInterfaceException& ex)
-    {
-        cerr << ex.what() << endl;
-    }
+        catch (const GoogleBooksInterfaceException& ex)
+        {
+            cerr << ex.what() << endl;
+        }
+    } while (opt != 0);
 
     return EXIT_SUCCESS;
 }
